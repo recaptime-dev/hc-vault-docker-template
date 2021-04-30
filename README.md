@@ -6,13 +6,23 @@ instance on Divio at the following URL in the card below to
 ensure no secrets were leaked on your machine.
 
 ---
+
 **URL**: <https://hcv-config.code-server.repohubdev.tk>
+
 **Password**: Found in Env Vars settings page and in the live server logs
+
 **Repo**: <https://github.com/code-server-boilerplates/hashicorp-vault> (soon)
+
 **Signed-in GitHub User**: [ThePinsTeam](https://github.com/thepinsteam)
+
 ---
 
 _TL;DR: Please keep the Postgres database info, among other things, secret._
+
+## Instances
+
+* Production: <https://bullshit-hq.vault.madebythepins.tk>
+* Staging: <https://bullshit-hq-vault.staging.rtapp.tk>
 
 ## Testing config
 
