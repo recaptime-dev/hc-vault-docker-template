@@ -1,4 +1,4 @@
-#disable_mlock = true
+disable_mlock = true
 ui            = true
 
 listener "tcp" {
@@ -8,8 +8,8 @@ listener "tcp" {
 }
 
 storage "postgresql" {
-  connection_url = "postgres://user:pass@host:12345/db"
+  connection_url = "$DB_URL"
 }
 
 # TL;DR: Not an Honest Government Ads reference
-api_addr = "https://bullshit-hq.vault.mafebythepins.tk"
+api_addr = "$API_ADDRESS"
