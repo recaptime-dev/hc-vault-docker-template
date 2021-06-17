@@ -1,0 +1,18 @@
+#!/bin/bash
+
+extractEnvVars() {
+  if [[ $VAULT_SERVER_MODE == "production" ]]; then
+     VAULT_HCL_CONFIG=prod.hcl
+  elif [[ $VAULT_SERVER_MODE == "staging" ]]; then
+     VAULT_HCL_CONFIG=staging.hcl
+  fi
+
+  if [[ $API_ADDRESS == "" ]] && [[ $VAULT_SERVER_MODE == "development" ]];
+     API_ADDRESS="http://localhost:3000"
+  fi
+}
+
+if [[ "$@" == "server" ]]; then
+  envsubst < /vault/config-staging/$VAULT_HCL_CONFIG > /vault/config/main.hcl
+fi
+
