@@ -1,0 +1,18 @@
+{
+  "name": "@bshq-vault-toolkits/psql-init",
+  "version": "0.1.0",
+  "description": "## With Postgres CLI client",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Andrei Jiroh <andreijiroh@madebythepins.tk>",
+  "license": "MIT",
+  "dependencies": {
+    "knex": "^0.95.6",
+    "pg": "^8.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^15.12.5"
+  }
+}
