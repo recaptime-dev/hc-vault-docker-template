@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if [ ! -f docker-compose.yml ]; then
+  cp docker-compose.template.yml docker-compose.yml
+fi
+
+if [ ! -f .env ]; then
+  cp .env.example .env
+fi
