@@ -21,20 +21,30 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 ##### LICENSE #####
+version: 3
 
-disable_mlock = $DISABLE_MEMORY_LOCKING
-ui            = $USE_VAULT_UI
-
-listener "tcp" {
-  address     = "0.0.0.0:3000"
-  # proxy stuff
-  tls_disable = "true"
-}
-
-storage "postgresql" {
-  connection_url = "$DATABASE_URL"
-}
-
-# TL;DR: Not an Honest Government Ads reference
-# If blank, it will point to http://localhost:3000 instead
-api_addr = "$API_ADDRESS"
+services:
+    db:
+        image: postgres:13-alpine
+        volumes:
+            - ./data/postgres:/var/lib/postgresql/data
+        environment:
+            POSTGRES_PASSWORD: shitfuckery
+            POSTGRES_USER: bullshithq
+            POSTGRES_DB: vault-db
+        restart: unless-stopped
+    vault:
+        image:
+            context: .
+        env_file:
+            - .env
+            - .env.example
+        ports:
+            - "3000:3000"
+        depends_on:
+            - db
+        cap_add:
+            - IPC_LOCK
+        cap_drop:
+            - ALL
+        restart: unless-stopped
