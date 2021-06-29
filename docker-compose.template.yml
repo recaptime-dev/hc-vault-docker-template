@@ -33,6 +33,7 @@ services:
             POSTGRES_USER: bullshithq
             POSTGRES_DB: vault-db
         restart: unless-stopped
+        shm_size: 1024Mi
     vault:
         image:
             context: .
