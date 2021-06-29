@@ -1,3 +1,8 @@
+/*
+  This file was based from https://www.vaultproject.io/docs/configuration/storage/postgresql#:~:text=The%20PostgreSQL%20storage%20backend%20does%20not%20automatically%20create%20the%20table.
+
+  To initalize with Postgres, please see README.md file. Make sure your Postgres version is 9.5 or above before proceeding.
+*/
 CREATE TABLE vault_kv_store (
   parent_path TEXT COLLATE "C" NOT NULL,
   path        TEXT COLLATE "C",
