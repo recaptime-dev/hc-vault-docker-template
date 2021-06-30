@@ -31,7 +31,8 @@ services:
         environment:
             POSTGRES_PASSWORD: shitfuckery
             POSTGRES_USER: bullshithq
-            POSTGRES_DB: vault-db
+            # Dashes may not work so we changed it to avoid errors
+            POSTGRES_DB: hashicorpvault_db
         restart: unless-stopped
         shm_size: 1024Mi
     vault:
