@@ -24,13 +24,105 @@
 # SOFTWARE.
 ##### LICENSE #####
 
+### COPIED FROM https://github.com/hashicorp/docker-vault/blob/master/0.X/docker-entrypoint.sh - START ###
+
+# Commit: https://github.com/hashicorp/docker-vault/commit/dfe2dcc44a0325248015bc52a4a64a96b1cae6fb
+
+set -e
+
+# Note above that we run dumb-init as PID 1 in order to reap zombie processes
+# as well as forward signals to all processes in its session. Normally, sh
+# wouldn't do either of these functions so we'd leak zombies as well as do
+# unclean termination of all our sub-processes.
+
+# Prevent core dumps
+ulimit -c 0
+
+# Allow setting VAULT_REDIRECT_ADDR and VAULT_CLUSTER_ADDR using an interface
+# name instead of an IP address. The interface name is specified using
+# VAULT_REDIRECT_INTERFACE and VAULT_CLUSTER_INTERFACE environment variables. If
+# VAULT_*_ADDR is also set, the resulting URI will combine the protocol and port
+# number with the IP of the named interface.
+get_addr () {
+    local if_name=$1
+    local uri_template=$2
+    ip addr show dev $if_name | awk -v uri=$uri_template '/\s*inet\s/ { \
+      ip=gensub(/(.+)\/.+/, "\\1", "g", $2); \
+      print gensub(/^(.+:\/\/).+(:.+)$/, "\\1" ip "\\2", "g", uri); \
+      exit}'
+}
+
+if [ -n "$VAULT_REDIRECT_INTERFACE" ]; then
+    export VAULT_REDIRECT_ADDR=$(get_addr $VAULT_REDIRECT_INTERFACE ${VAULT_REDIRECT_ADDR:-"http://0.0.0.0:8200"})
+    echo "Using $VAULT_REDIRECT_INTERFACE for VAULT_REDIRECT_ADDR: $VAULT_REDIRECT_ADDR"
+fi
+if [ -n "$VAULT_CLUSTER_INTERFACE" ]; then
+    export VAULT_CLUSTER_ADDR=$(get_addr $VAULT_CLUSTER_INTERFACE ${VAULT_CLUSTER_ADDR:-"https://0.0.0.0:8201"})
+    echo "Using $VAULT_CLUSTER_INTERFACE for VAULT_CLUSTER_ADDR: $VAULT_CLUSTER_ADDR"
+fi
+
+# VAULT_CONFIG_DIR isn't exposed as a volume but you can compose additional
+# config files in there if you use this image as a base, or use
+# VAULT_LOCAL_CONFIG below.
+VAULT_CONFIG_DIR=/vault/config
+
+# You can also set the VAULT_LOCAL_CONFIG environment variable to pass some
+# Vault configuration JSON without having to bind any volumes.
+if [ -n "$VAULT_LOCAL_CONFIG" ]; then
+    echo "$VAULT_LOCAL_CONFIG" > "$VAULT_CONFIG_DIR/local.json"
+fi
+
+### COPIED FROM https://github.com/hashicorp/docker-vault/blob/master/0.X/docker-entrypoint.sh - START ###
+
+useColor() {
+  # Only use colors if connected to a terminal
+  if [ -t 1 ]; then
+    RED=$(printf '\033[31m')
+    GREEN=$(printf '\033[32m')
+    YELLOW=$(printf '\033[33m')
+    BLUE=$(printf '\033[34m')
+    MAGENTA=$(printf '\033[35m')
+    BOLD=$(printf '\033[1m')
+    RESET=$(printf '\033[m')
+  else
+    RED=""
+    GREEN=""
+    YELLOW=""
+    BLUE=""
+    MAGENTA=""
+    BOLD=""
+    RESET=""
+  fi
+}
+
+warn() {
+  echo "${YELLOW}warning: $* ${RESET}"
+}
+
+success() {
+  echo "${GREEN}success: $* ${RESET}"
+}
+
+error() {
+  echo "${RED}error: $* ${RESET}"
+}
+
+echoStageName() {
+  echo "${BOLD}----> $* ${RESET}"
+}
+
 extractEnvVars() {
+  echoStageName "Extracting environment variables"
   if [[ $API_ADDRESS == "" ]] && [[ $VAULT_SERVER_MODE == "development" ]]; then
      export API_ADDRESS="http://localhost:3000"
   fi
 
   if [[ $DATABASE_URL == "" ]]; then
-     export DATABASE_URL="postgres://bullshithq:shitfuckery@db"
+     warn "DATABASE_URL is undefined, falling back to Compose-styled defaults"
+     export DATABASE_URL="postgres://bullshithq:shitfuckery@db/hashcorpvault_db"
+     export PGUSER=bullshithq PGPASSWORD=shitfuckery PGHOST=db PGPORT=5432 PGDATABASE=hashicorpvault_db
+  elif [[ $DATABASE_URL == "" ]] && [[ $PGHOST != "" && $PGPORT != "" ]]; then
+     export DATABASE_URL="postgres://$PGUSER:$PGPASSWORD@$PGHOST:PGPORT/$PGDATABASE"
   fi
 
   if [[ $DISABLE_MEMORY_LOCKING == "" ]]; then
@@ -38,12 +130,26 @@ extractEnvVars() {
   fi
 }
 
-if [[ "$1" == "server" ]]; then
-  extractEnvVars
+startVaultServer() {
+  if [[ $1 == "production" ]]; then
+      extractEnvVars
 
-  envsubst < /vault/template.hcl > /vault/config/main.hcl
+      echoStageName "Generating configuration"
+      envsubst < /vault/template.hcl > /vault/config/main.hcl
 
-  /usr/local/bin/docker-entrypoint.sh
-else
-  exec "$@"
+      echoStageName "Starting Vault server"
+      vault server -config="$VAULT_CONFIG_DIR"
+  fi
+}
+
+# If the user is trying to run Vault directly with some arguments, then
+# pass them to Vault.
+if [ "${1:0:1}" = '-' ]; then
+    set -- vault "$@"
 fi
+
+if [[ "$1" == "prod-server" ]]; then
+  startVaultServer production
+fi
+
+exec "$@"
