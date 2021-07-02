@@ -30,12 +30,15 @@ WORKDIR /vault
 # just in case the base image doesn't have Bash
 RUN apk add bash coreutils gettext
 
-# Copy config there
+# Copy config and SQL stuff
 COPY config_template.hcl /vault/template.hcl
 COPY sql /vault/sql-src
 
 # Then install Node.js and psql for our database migrations to run
 RUN apk add nodejs postgresql-client
+
+# One last thing: copy scripts/wait-for-it from thedevs-network/kutt
+COPY script/wait-for-it /bin/wait-for-it
 
 # Finally copy our entrypoint script
 COPY bootstrapper-handler /vault/bootstrap-handler.sh
