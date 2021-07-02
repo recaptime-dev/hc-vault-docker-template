@@ -26,18 +26,28 @@ warn() {
 }
 
 success() {
-  echo "${GREEN}$* ${RESET}"
+  echo "${GREEN}success: $* ${RESET}"
+}
+
+error() {
+  echo "${RED}error: $* ${RESET}"
+}
+
+echoStageName() {
+  echo "${BOLD}----> $* ${RESET}"
 }
 
 main() {
   useColor
 
+  echoStageName "Generating Docker Compose config"
   if [ ! -f docker-compose.yml ]; then
     cp docker-compose.template.yml docker-compose.yml
   else
     warn "docker-compose.yml exists! Please delete it first if you want to start over"
   fi
 
+  echoStageName "Generating .env file"
   if [ ! -f .env ]; then
     cp .env.example .env
   else
