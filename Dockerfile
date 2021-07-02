@@ -34,12 +34,12 @@ RUN apk add bash coreutils gettext
 COPY config_template.hcl /vault/template.hcl
 COPY sql /vault/sql-src
 
-# Then copy our entrypoint script
+# Then install Node.js and psql for our database migrations to run
+RUN apk add nodejs postgresql-client
+
+# Finally copy our entrypoint script
 COPY bootstrapper-handler /vault/bootstrap-handler.sh
 ENTRYPOINT ["/vault/bootstapper-handler.sh"]
-
-# Then install Node.js for our database migrations to run
-RUN apk add nodejs
 
 # and hit the road
 CMD ["server"]
