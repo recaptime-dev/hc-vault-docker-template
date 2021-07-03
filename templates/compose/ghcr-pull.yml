@@ -21,31 +21,33 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 ##### LICENSE #####
-version: 3
+version: "3"
 
 services:
-    db:
-        image: postgres:13-alpine
-        volumes:
-            - ./data/postgres:/var/lib/postgresql/data
-        environment:
-            POSTGRES_PASSWORD: shitfuckery
-            POSTGRES_USER: bullshithq
-            # Dashes may not work so we changed it to avoid errors
-            POSTGRES_DB: hashicorpvault_db
-        restart: unless-stopped
-        shm_size: 1024Mi
-    vault:
-        image:
-            context: .
-        env_file:
-            - .env
-        ports:
-            - "3000:3000"
-        depends_on:
-            - db
-        cap_add:
-            - IPC_LOCK
-        cap_drop:
-            - ALL
-        restart: unless-stopped
+  db:
+    image: postgres:13-alpine
+    volumes:
+      - vault-postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: shitfuckery
+      POSTGRES_USER: bullshithq
+      # Dashes may not work so we changed it to avoid errors
+      POSTGRES_DB: hashicorpvault_db
+      restart: unless-stopped
+      shm_size: 1024Mi
+  vault:
+    image: ghcr.io/madebythepinshub/hc-vault-docker-template
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    cap_add:
+      - IPC_LOCK
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+volumes:
+  vault-postgres-data:

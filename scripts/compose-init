@@ -38,12 +38,19 @@ echoStageName() {
   echo "${BOLD}----> $* ${RESET}"
 }
 
+copyComposeTemplate() {
+  if [[ $1 == "ghcr.io" ]]; then
+    cp templates/compose/ghcr-pull.yml docker-compose.yml
+  fi
+}
+
 main() {
+  COMPOSE_TEMPLATE_TYPE=${COMPOSE_TEMPLATE_TYPE-ghcr.io}
   useColor
 
-  echoStageName "Generating Docker Compose config"
+  echoStageName "Generating Docker Compose config from template $COMPOSE_TEMPLATE_TYPE"
   if [ ! -f docker-compose.yml ]; then
-    cp docker-compose.template.yml docker-compose.yml
+    copyComposeTemplate $COMPOSE_TEMPLATE_TYPE
   elif [ -f docker-compose.yml ] && [[ $OVERWRITE_COMPOSE_FILE != "" ]]; then
     warn "Deleting old docker-compose.yml file and starting over in 5 seconds"
     sleep 5
