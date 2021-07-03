@@ -7,8 +7,8 @@ or our Docker image available at GHCR and RHQCR, you don't need to do this again
 
 1. Download the `initdb.sql` file first with wget:
 
-```
-$ wget https://github.com/MadeByThePinsHub/hc-vault-docker-template/raw/main/sql/manual/init-db.sql
+```sh
+wget https://github.com/MadeByThePinsHub/hc-vault-docker-template/raw/main/sql/manual/init-db.sql
 ```
 
 2. Import with `psql`:
@@ -26,6 +26,8 @@ $ wget https://github.com/MadeByThePinsHub/hc-vault-docker-template/raw/main/sql
 #  - hashcorpvault_db: Postgres database name
 PGPASSWORD=shitfukery psql -h localhost -p 5432 -U bullshithq -d hashicorpvault_db < init-db.sql
 ```
+
+3. Now you can start the server with `vault server -config=/path/to/config_dir/optionally_filename.hcl`.
 
 ## With Node.js
 
