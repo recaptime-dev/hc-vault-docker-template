@@ -44,19 +44,31 @@ main() {
   echoStageName "Generating Docker Compose config"
   if [ ! -f docker-compose.yml ]; then
     cp docker-compose.template.yml docker-compose.yml
+  elif [ -f docker-compose.yml ] && [[ $OVERWRITE_COMPOSE_FILE != "" ]]; then
+    warn "Deleting old docker-compose.yml file and starting over in 5 seconds"
+    sleep 5
+
+    rm docker-compose.yml || true
+    cp docker-compose.template.yml docker-compose.yml
   else
-    warn "docker-compose.yml exists! Please delete it first if you want to start over"
+    warn "docker-compose.yml exists! Please delete it first if you want to start over set OVERWRITE_COMPOSE_FILE to any value"
   fi
   sleep 3
 
   echoStageName "Generating .env file"
   if [ ! -f .env ]; then
     cp .env.example .env
+  elif [ -f .env ] && [[ $OVERWRITE_DOTENV_FILE != "" ]]; then
+    warn "Deleting old .env file and starting over in 5 seconds"
+    sleep 5
+
+    rm .env || true
+    cp .env.example .env
   else
-    warn "dotenv file exists! Please delete it first if you want to start over"
+    warn "dotenv file exists! Please delete it first if you want to start over or set OVERWRITE_DOTENV_FILE to any value"
   fi
 
-  success "Successfully prepared Compose files, now edit the .env file and configure as needed."
+  success "Successfully prepared Compose files, now edit the .env file and configure as needed. Then you can do 'docker-compose up'."
 }
 
 main
