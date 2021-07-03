@@ -7,9 +7,10 @@
 The `operator init` command in Vault CLI can be only used once on an newly-installed node or if setting up an additional storage backend (e.g. if you set up Raft in an Compose/Kubernetes installation).
 
 **Supported flags**:
-  * `key-shares` - Number of unseal keys to be generated and distributed to other operaators when sharing an Vault instance.
-  * `key-threshold` - Number to unseal keys needed to unseal the encrypted Vault storage and to decrypt the master key. Usually this should be 50-75% of total unseal keys.
-  * `pgp-keys` - List of GPG public keys encoded in base64 without ASCII armoring or Keybase usernames with `keybase:` prefix to be used to encrypt the unseal keys
+
+* `key-shares` - Number of unseal keys to be generated and distributed to other operaators when sharing an Vault instance.
+* `key-threshold` - Number to unseal keys needed to unseal the encrypted Vault storage and to decrypt the master key. Usually this should be 50-75% of total unseal keys.
+* `pgp-keys` - List of GPG public keys encoded in base64 without ASCII armoring or Keybase usernames with `keybase:` prefix to be used to encrypt the unseal keys
 
 ## Encrypting seal keys with GPG or Keybase through CLI
 
@@ -54,8 +55,8 @@ $ echo "wcBMA37..." | base64 --decode | keybase pgp decrypt
 4. Unseal the Vault with `vault operator unseaal`. Repeat this step until the **Sealed** status is now `false` when yoou do `vault status`.
 
 ```sh
-$ vault operator unseal
-# Key (will be hidden): ****
+# After running this, check its status at 'vault status'
+vault operator unseal [decrypted-key-here]
 ```
 
 ### With GPG
