@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2034
 
 useColor() {
   # Only use colors if connected to a terminal
@@ -46,6 +47,7 @@ main() {
   else
     warn "docker-compose.yml exists! Please delete it first if you want to start over"
   fi
+  sleep 3
 
   echoStageName "Generating .env file"
   if [ ! -f .env ]; then
