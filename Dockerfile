@@ -25,24 +25,33 @@
 # syntax=docker/dockerfile:1
 FROM vault:1.7.3
 
+# Temporarily switch to root to install deps and chown to vault
+USER root
 WORKDIR /vault
 
-# just in case the base image doesn't have Bash
-RUN apk add bash coreutils gettext
+# just in case the base image doesn't have Bash, we also install Node.js and psql
+# for our database migrations to run
+RUN apk add bash coreutils gettext nodejs postgresql-client
 
 # Copy config and SQL stuff
-COPY config_template.hcl /vault/template.hcl
-COPY sql /vault/sql-src
-
-# Then install Node.js and psql for our database migrations to run
-RUN apk add nodejs postgresql-client
+COPY --chown=vault:vault config_template.hcl /vault/template.hcl
+COPY --chown=vault:vault sql /vault/sql-src
 
 # One last thing: copy scripts/wait-for-it from thedevs-network/kutt
-COPY script/wait-for-it /bin/wait-for-it
+#COPY scripts/wait-for-it /bin/wait-for-it
 
 # Finally copy our entrypoint script
-COPY bootstrapper-handler /vault/bootstrap-handler.sh
-ENTRYPOINT ["/vault/bootstapper-handler.sh"]
+COPY --chown=vault:vault bootstrapper-handler /vault/bootstrap-handler
+
+# Ensure our bootstrap script is executable btw
+RUN chmod +x /vault/bootstrap-handler \
+    && touch config/main.hcl && chown -R vault config
+
+USER vault
+
+# Expose in port 3000
+EXPOSE 3000
 
 # and hit the road
-CMD ["server"]
+ENTRYPOINT ["/usr/bin/dumb-init"]
+CMD ["/vault/bootstrap-handler", "server"]
