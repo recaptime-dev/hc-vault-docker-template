@@ -173,6 +173,8 @@ startVaultServer() {
 
     echoStageName "Generating configuration"
     envsubst < /vault/template.hcl > /vault/config/main.hcl
+    [ $DEBUG == "1" ] && cat /vault/config/main.hcl && warn "The above output is your config, this might contain your DATABASE_URL!"
+    sleep 2
 
     echoStageName "Starting Vault server in production mode in 5 seconds"
     sleep 5

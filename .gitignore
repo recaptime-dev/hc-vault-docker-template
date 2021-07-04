@@ -179,3 +179,6 @@ data/
 
 # Ensure any user-defined Compose config aren't commited to version control
 docker-compose.yml
+
+# Our private config stuff
+config.hcl
