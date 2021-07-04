@@ -27,14 +27,14 @@ services:
   db:
     image: postgres:13-alpine
     volumes:
-      - vault-postgres-data:/var/lib/postgresql/data
+      - ./data/postgres:/var/lib/postgresql/data
     environment:
       POSTGRES_PASSWORD: shitfuckery
       POSTGRES_USER: bullshithq
       # Dashes may not work so we changed it to avoid errors
       POSTGRES_DB: hashicorpvault_db
-    restart: unless-stopped
-    shm_size: 1024Mi
+      restart: unless-stopped
+      shm_size: 1024Mi
   vault:
     build:
       context: .
@@ -50,7 +50,3 @@ services:
     cap_drop:
       - ALL
     restart: unless-stopped
-    shm_size: 256Mi
-
-volumes:
-  vault-postgres-data:

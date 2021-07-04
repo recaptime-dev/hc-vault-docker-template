@@ -38,12 +38,24 @@ echoStageName() {
   echo "${BOLD}----> $* ${RESET}"
 }
 
+# Ensure we're in Gitpod before using this script, otherwise bail out.
+# Default vars are from https://www.gitpod.io/docs/environment-variables#default-environment-variables
+if [[ $GITPOD_WORKSPACE_ID == "" ]] || [[ $GITPOD_WORKSPACE_URL == "" ]]; then
+  error "You're not inside an Gitpod workspace to run this! If you don't have an self-hosted version of Gipod on your Kuberenetes cluster, open this repo on Gitpod.io: https://gitpod.io/#https://github.com/MadeByThePinsHub/hc-vault-internal.git"
+  error "If you have Keybase installed locally and want to start Keybase service (without GUI/KBFS), please run 'run_keybase -fg' instead."
+  exit 1
+fi
+
 main() {
     echoStageName "Starting Keybase services"
     if ! run_keybase; then
       EXIT_CODE=$?
-      error "An munted shitshow has been happened while attempting to activate Keybase service" && exit $EXIT_CODE
+      error "An munted shitshow has been happened while attempting to activate Keybase service. The logs above is needed for Andrei Jiroh to fix the issue."
+      error "Please report it on GitHub at https://github.com/MadeByThePinsHub/hc-vault-docker-template/issues/new?assignees=&labels=bug&template=report-a-problem.md&title=%5Bbug%5D for us to get notified."
+      exit $EXIT_CODE
     fi
 
     success "Everything is cool and normal, enjoy your Gitpod workspace"
 }
+
+main

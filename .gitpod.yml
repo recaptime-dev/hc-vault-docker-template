@@ -20,11 +20,19 @@ tasks:
   - before: |
       bash $GITPOD_REPO_ROOT/scripts/gp-ws-init
       gp sync-done run_keybase
+  - command: |
+      echo "info: Your Keybase instance is now running in the background! Once your Vault instance boots up, open the preview link (get with 'gp url 3000')"
+      echo "info: and follow the init process at docs/init-vault.md file. Happy secret keeping inside Gitpod!"
   # Start our Compose instance in the background
   - name: Start Vault instance
     command: |
       gp sync-await run_keybase
       if [ ! -f docker-compose.yml ] && [ ! -f .env ]; then
-        $GITPOD_REPO_ROOT/scripts/compose-init
+        COMPOSE_TEMPLATE_TYPE=gitpodify $GITPOD_REPO_ROOT/scripts/compose-init
       fi
       docker-compose up
+
+ports:
+  - port: 3000
+    # Everyone with your port forwarding URL in Gitpod can access your Vault instance
+    visibility: public

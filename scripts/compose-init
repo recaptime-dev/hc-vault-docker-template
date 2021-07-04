@@ -41,6 +41,10 @@ echoStageName() {
 copyComposeTemplate() {
   if [[ $1 == "ghcr.io" ]]; then
     cp templates/compose/ghcr-pull.yml docker-compose.yml
+  elif [[ $1 == "local" ]]; then
+    cp templates/compose/build-locally.yml docker-compose.yml
+  elif [[ $1 == "gitpodify" ]]; then
+    cp templates/compose/gitpodify.yml docker-compose.yml
   fi
 }
 
