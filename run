@@ -1,0 +1,24 @@
+#!/bin/bash
+
+if [[ $1 == "compose" ]]; then
+  if [ ! -f .env ] || [ ! -f docker-compose.yml ]; then
+    if [[ $BASHRC_GOOGLE_PATH == "/google/devshell/bashrc.google" ]] && [[ $CLOUD_SHELL == "true" ]]; then
+      COMPOSE_TEMPLATE_TYPE=no_mlock ./scripts/compose-init
+    else
+      COMPOSE_TEMPLATE_TYPE=gitpodify ./scripts/compose-init
+    fi
+  elif [[ $OVERWRITE_FILES != "" ]]; then
+    export OVERWRITE_COMPOSE_FILE=true OVERWRITE_DOTENV_FILE=true
+    if [[ $BASHRC_GOOGLE_PATH == "/google/devshell/bashrc.google" ]] && [[ $CLOUD_SHELL == "true" ]]; then
+      COMPOSE_TEMPLATE_TYPE=cloud-shell ./scripts/compose-init
+    else
+      COMPOSE_TEMPLATE_TYPE=gitpodify ./scripts/compose-init
+    fi
+    unset OVERWRITE_COMPOSE_FILE OVERWRITE_DOTENV_FILE
+  fi
+  sleep 3
+  docker-compose up --build
+else
+  echo "Supported modes: compose"
+  exit 1
+fi
