@@ -45,13 +45,25 @@ COPY --chown=vault:vault bootstrapper-handler /vault/bootstrap-handler
 
 # Ensure our bootstrap script is executable btw
 RUN chmod +x /vault/bootstrap-handler \
-    && touch config/main.hcl && chown -R vault config
+    # Create an staging folder for our generated Vault config through
+    # envsubst command. Our bootstrap script in this image will handle the
+    # rest on it.
+    && mkdir /vault/staging && touch staging/main.hcl && chown -R vault staging \
+    # Then delete the main entrypoint script from our base image because we want to
+    # custmize it.
+    && rm /usr/local/bin/docker-entrypoint.sh
 
-USER vault
+COPY scripts/main-entrypoint-custom.sh /usr/local/bin/docker-entrypoint.sh
+
+# Ensure it's executable btw
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Expose in port 3000
 EXPOSE 3000
 
-# and hit the road
+# ..and hit the road! When our bootstrap script calls the customized /usr/local/bin/docker-entrypoint.sh,
+# we'll switch to the vault user through su-exec
 ENTRYPOINT ["/usr/bin/dumb-init"]
+# by default, we'll start our Vault server through some environment variables magic
+# if $VAULT_SERVER_MODE is set to 'production', otherwise we'll start in dev mode instead.
 CMD ["/vault/bootstrap-handler", "server"]
