@@ -2,24 +2,13 @@
 # shellcheck disable=SC2034
 
 useColor() {
-  # Only use colors if connected to a terminal
-  if [ -t 1 ]; then
-    RED=$(printf '\033[31m')
-    GREEN=$(printf '\033[32m')
-    YELLOW=$(printf '\033[33m')
-    BLUE=$(printf '\033[34m')
-    MAGENTA=$(printf '\033[35m')
-    BOLD=$(printf '\033[1m')
-    RESET=$(printf '\033[m')
-  else
-    RED=""
-    GREEN=""
-    YELLOW=""
-    BLUE=""
-    MAGENTA=""
-    BOLD=""
-    RESET=""
-  fi
+  RED=$(printf '\033[31m')
+  GREEN=$(printf '\033[32m')
+  YELLOW=$(printf '\033[33m')
+  BLUE=$(printf '\033[34m')
+  MAGENTA=$(printf '\033[35m')
+  BOLD=$(printf '\033[1m')
+  RESET=$(printf '\033[m')
 }
 
 warn() {
@@ -45,6 +34,10 @@ copyComposeTemplate() {
     cp templates/compose/build-locally.yml docker-compose.yml
   elif [[ $1 == "gitpodify" ]]; then
     cp templates/compose/gitpodify.yml docker-compose.yml
+  elif [[ $1 == "no_mlock" ]]; then
+    cp templates/compose/no-ipc-lock.yml docker-compose.yml
+  elif [[ $1 == "cloud-shell" ]] || [[ $1 == "cloudshell" ]]; then
+    cp templates/compose/cloud-shell.yml docker-compose.yml
   fi
 }
 
@@ -60,7 +53,7 @@ main() {
     sleep 5
 
     rm docker-compose.yml || true
-    cp docker-compose.template.yml docker-compose.yml
+    copyComposeTemplate $COMPOSE_TEMPLATE_TYPE
   else
     warn "docker-compose.yml exists! Please delete it first if you want to start over set OVERWRITE_COMPOSE_FILE to any value"
   fi
@@ -68,13 +61,21 @@ main() {
 
   echoStageName "Generating .env file"
   if [ ! -f .env ]; then
-    cp .env.example .env
+    if [[ $CLOUD_SHELL == "true" ]]; then
+      cp templates/dotenv/gcloudshell.env .env
+    else
+      cp .env.example .env
+    fi
   elif [ -f .env ] && [[ $OVERWRITE_DOTENV_FILE != "" ]]; then
     warn "Deleting old .env file and starting over in 5 seconds"
     sleep 5
 
     rm .env || true
-    cp .env.example .env
+    if [[ $CLOUD_SHELL == "true" ]]; then
+      cp templates/dotenv/disable_mlock.env .env
+    else
+      cp .env.example .env
+    fi
   else
     warn "dotenv file exists! Please delete it first if you want to start over or set OVERWRITE_DOTENV_FILE to any value"
   fi
