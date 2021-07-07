@@ -46,7 +46,15 @@ main() {
   useColor
 
   echoStageName "Generating Docker Compose config from template $COMPOSE_TEMPLATE_TYPE"
-  if [ ! -f docker-compose.yml ]; then
+  if [[ $CLOUD_SHELL == "true" ]] && [ ! -f docker-compose.yml ]; then
+    copyComposeTemplate cloud-shell
+  elif [ ! -f docker-compose.yml ]; then
+    copyComposeTemplate $COMPOSE_TEMPLATE_TYPE
+  elif [ -f docker-compose.yml ] && [[ $CLOUD_SHELL == "true" ]] && [[ $OVERWRITE_COMPOSE_FILE != "" ]]; then
+    warn "Deleting old docker-compose.yml file and starting over in 5 seconds"
+    sleep 5
+
+    rm docker-compose.yml || true
     copyComposeTemplate $COMPOSE_TEMPLATE_TYPE
   elif [ -f docker-compose.yml ] && [[ $OVERWRITE_COMPOSE_FILE != "" ]]; then
     warn "Deleting old docker-compose.yml file and starting over in 5 seconds"
