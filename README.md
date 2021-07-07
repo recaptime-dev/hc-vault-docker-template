@@ -8,11 +8,12 @@ The easy way of running HashiCorp Vault locally (or in Gitpod) is using Docker C
 
 1. Right after cloning and `cd` into it, run `./scripts/compose-init` to generate `docker-compose.yml` and `.env`. If Bash and coreutils is nt installed on your Linux system (posibly you're using Alpine Linux), please install it based on your distribution's package manager docs.
     * To use an different template, prefix `COMPOSE_TEMPLATE_TYPE=template` where `template` can be `gitpodify` (aka `dirvolume`), `local`, and `ghcr.io`.
+    * If you prefer automation, run `./run compose` on the root directory of this repository and skip steps 2-3.
 2. Customize the `docker-compose.yml` and `.env` files based on your liking, and ensure that your configuration matches what's in the Compose file, especially for `POSTGRES_*` stuff for initializing Postgres database.
 3. Run with `docker-compose up -d` then `docker-compose logs --follow=all --tail` to track the logs, and allow our bootstrap script to automagically do database migrations and configuration generation before starting the Vault server.
 4. Navigate to `http://localhost:3000` and complete the storage initialization and unsealing process.
    * If you have the Vault CLI installed, please see [`docs/init-vault.md`](docs/init-vault.md).
-   * Don't have Vault installed? [See the installation docs](https://www.vaultproject.io/docs/install) or use the web terminal at `http://localhost:3012` and follow the instructions above.
+   * Don't have Vault installed? [See the installation docs](https://www.vaultproject.io/docs/install) or use the web terminal at `http://localhost:3030` and follow the instructions above.
 5. Enjoy yur local Vault instance! To shut down, run `docker-compose stop`. (Remember that Vault will seals its storage and you need the unseal keys again when you do `docker-compose start`.)
 
 ## Deployment
