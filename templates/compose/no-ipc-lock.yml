@@ -41,7 +41,7 @@ services:
   vault:
     build:
       context: .
-    image: ghcr.io/madebythepinshub/hc-vault-docker-template
+    image: ghcr.io/madebythepinshub/hc-vault-docker-template:localdev
     env_file:
       - .env
     ports:
@@ -49,3 +49,21 @@ services:
     depends_on:
       - db
     restart: unless-stopped
+    networks:
+      - vault-gotty-net-bridger
+  gotty:
+    image: ghcr.io/madeythepinshub/vault-gnupg-gotty:localdev
+    build:
+      context: terminal
+      dockerfile: terminal/Dockerfile
+    ports:
+      - "3030:3030"
+    depends_on:
+      # Only start when the Vault server starts
+      - vault
+    networks:
+      - vault-gotty-net-bridger
+
+networks:
+  vault-gotty-net-bridger:
+    driver: bridge

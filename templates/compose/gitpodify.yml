@@ -50,3 +50,19 @@ services:
     cap_drop:
       - ALL
     restart: unless-stopped
+  gotty:
+    image: ghcr.io/madeythepinshub/vault-gnupg-gotty:localdev
+    build:
+      context: terminal
+      dockerfile: terminal/Dockerfile
+    ports:
+      - "3030:3030"
+    depends_on:
+      # Only start when the Vault server starts
+      - vault
+    networks:
+      - vault-gotty-net-bridger
+
+networks:
+  vault-gotty-net-bridger:
+    driver: bridge
