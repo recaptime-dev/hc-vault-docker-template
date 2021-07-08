@@ -1,0 +1,15 @@
+---
+application:
+  name: "hc-vault-personal"
+  project: "hashicorp-vault-experiments"
+  organization: "QoveryCommunity"
+databases:
+- type: "POSTGRESQL"
+  name: "vault-db"
+  version: "12"
+routers:
+- name: "main-hc-vault-personal"
+  routes:
+  - application_name: "hc-vault-personal"
+    paths:
+    - "/*"
