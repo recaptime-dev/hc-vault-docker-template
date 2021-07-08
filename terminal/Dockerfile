@@ -1,10 +1,21 @@
 # syntax=docker/dockerfile:1
 
 # Stage 1: Download GoTTY source code and build from source for reproducing builds
-FROM golang:1.16 as gotty
+FROM alpine:3.14 as gotty
 
-# Since we're building from the master branch, proceed at your own risk!
-RUN mkdir -p /tmp/gotty && GOPATH=/tmp/gotty go get github.com/yudai/gotty
+ARG GOTTY_VERSION=v1.0.1
+
+RUN mkdir -p /tmp/gotty/bin && set -eux; \
+    apkArch="$(apk --print-arch)"; \
+    case "$apkArch" in \
+        armhf) ARCH='arm' ;; \
+        x86_64) ARCH='amd64' ;; \
+        x86) ARCH='386' ;; \
+        *) echo >&2 "error: unsupported architecture: $apkArch"; exit 1 ;; \
+    esac && \
+    # when built on amd64 system: wget -qO- https://github.com/yudai/gotty/releases/download/v1.0.1/gotty_linux_amd64.tar.gz | tar -xzv -C /tmp/gotty/bin
+    wget -qO- https://github.com/yudai/gotty/releases/download/${GOTTY_VERSION}/gotty_linux_${ARCH}.tar.gz | tar -xzv -C /tmp/gotty/bin && \
+    mv /tmp/gotty/bin/gotty /usr/local/bin/gotty
 
 FROM alpine:3.14 as hashicorp
 
@@ -15,7 +26,7 @@ ENV VAULT_GPGKEY=C874011F0AB405110D02105534365D9472D7468F
 ARG VAULT_VERSION=1.7.3
 
 # Set up certificates, our base tools, and Vault.
-# Copied
+# Copied from https://github.com/hashicorp/docer-vault/blob/master/0.X/Dockerfile
 RUN set -eux; \
     # Prep
     apk add --no-cache ca-certificates gnupg openssl && \
@@ -50,31 +61,46 @@ RUN set -eux; \
     if [ -f /tmp/build/EULA.txt ]; then mkdir -p /usr/share/doc/vault; mv /tmp/build/EULA.txt /usr/share/doc/vault/EULA.txt; fi && \
     if [ -f /tmp/build/TermsOfEvaluation.txt ]; then mkdir -p /usr/share/doc/vault; mv /tmp/build/TermsOfEvaluation.txt /usr/share/doc/vault/TermsOfEvaluation.txt; fi && \
     # Cleanup 
-    cd /tmp && \
-    rm -rf /tmp/build && \
     gpgconf --kill dirmngr && \
     gpgconf --kill gpg-agent && \
     rm -rf /root/.gnupg
 
 FROM alpine:3.14
 
-# Copy our locally build GoTTY
-COPY --from=gotty /tmp/gotty/bin/gotty /usr/local/bin/gotty
+# Copy GoTTY from the gotty download process stage
+COPY --from=gotty /usr/local/bin/gotty /usr/local/bin/gotty
+
+# Make sure it's executable
+RUN chmod a+x /usr/local/bin/gotty \
+    # TODO: Link to Stack Overflow answer
+    && mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
 
 # Then copy Vault stuff, including legalese stuff
 COPY --from=hashicorp /bin/vault /usr/local/bin/vault
-COPY --from=hashicorp /usr/share/doc/vault /usr/share/doc/vault
-
-# Create a vault user and group first so the IDs get set the same way,
-# even as the rest of this may change over time.
-RUN addgroup vault && \
-    adduser -D -G vault vault
+# Commented out because it's enterprise stuff probably.
+#COPY --from=hashicorp /tmp/build/EULA.txt /tmp/build/TermsOfEvaluation.txt /usr/share/doc/vault/
 
 # We'll use su-exec to step down into the vault user from the current root user
-# to lessen attack surface on the web terminal application.
+# to lessen attack surface on the web terminal application. Please, don't add sudo here!
 RUN apk add su-exec dumb-init tzdata ca-certificates gnupg openssl
 
-COPY --chown:vault:vault .bashrc .bash_aliases /home/vault/
+# Btw add bash in there
+RUN apk add bash coreutils
 
-ENTRYPOINT ['dumb-init']
-CMD ['/usr/local/bin/image-bootstraper']
+# Add our image bootstrap script. This is where we'll kick
+# dumb-init and su-exec in.
+COPY image-bootstraper.sh /usr/bin/image-bootstraper
+
+# Our bashrc and shell aliases/functions
+COPY .bashrc .bash_aliases /root/
+
+# Ensure our image bootstraper script is executable
+RUN chmod +x /usr/bin/image-bootstraper
+
+# Listen at port 3030
+EXPOSE 3030
+
+# Since our entrypoint is /usr/local/bin/image-bootstraper, our custom
+# script, we need to make dumb-init as the shebang and call /bin/bash.
+ENTRYPOINT ["/usr/bin/image-bootstraper"]
+CMD ["start"]
