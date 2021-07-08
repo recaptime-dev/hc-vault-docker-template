@@ -17,7 +17,11 @@ if [[ $1 == "compose" ]]; then
     unset OVERWRITE_COMPOSE_FILE OVERWRITE_DOTENV_FILE
   fi
   sleep 3
-  docker-compose up --build
+  if [[ $DOCKER_BUILDKIT == "1" ]]; then
+    docker-compose up --build
+  else
+    echo "Have you enabled Docker Buildkit? Please either 'export DOCKER_BUILDKIT=1' on client side or permanently enable it on your deamon as per "
+  fi
 else
   echo "Supported modes: compose"
   exit 1

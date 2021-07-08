@@ -17,12 +17,12 @@ vscode:
 
 tasks:
   # Initialize Keybase services first
-  - before: |
+  - name: Start Keybase service and stuff
+    command: |
       bash $GITPOD_REPO_ROOT/scripts/gp-ws-init
-      gp sync-done run_keybase
-  - command: |
       echo "info: Your Keybase instance is now running in the background! Once your Vault instance boots up, open the preview link (get with 'gp url 3000')"
       echo "info: and follow the init process at docs/init-vault.md file. Happy secret keeping inside Gitpod!"
+      gp sync-done run_keybase
   # Start our Compose instance in the background
   - name: Start Vault instance
     command: |
