@@ -29,26 +29,28 @@ FROM vault:1.7.3
 USER root
 WORKDIR /vault
 
+# Copy config and SQL stuff
+COPY config_template.hcl /vault/template.hcl
+COPY sql /vault/migrations
+
 # just in case the base image doesn't have Bash, we also install Node.js and psql
 # for our database migrations to run
-RUN apk add bash coreutils gettext nodejs postgresql-client
-
-# Copy config and SQL stuff
-COPY --chown=vault:vault config_template.hcl /vault/template.hcl
-COPY --chown=vault:vault sql /vault/sql-src
+RUN apk add bash coreutils gettext nodejs postgresql-client \
+    # Aded to possibly fix permission issues
+    && chmod 766 /vault/template.hcl
 
 # One last thing: copy scripts/wait-for-it from thedevs-network/kutt
 #COPY scripts/wait-for-it /bin/wait-for-it
 
 # Finally copy our entrypoint script
-COPY --chown=vault:vault bootstrapper-handler /vault/bootstrap-handler
+COPY bootstrapper-handler /vault/bootstrap-handler
 
 # Ensure our bootstrap script is executable btw
 RUN chmod +x /vault/bootstrap-handler \
     # Create an staging folder for our generated Vault config through
     # envsubst command. Our bootstrap script in this image will handle the
     # rest on it.
-    && mkdir /vault/staging && touch staging/main.hcl && chown -R vault staging \
+    && mkdir /vault/staging \
     # Then delete the main entrypoint script from our base image because we want to
     # custmize it.
     && rm /usr/local/bin/docker-entrypoint.sh

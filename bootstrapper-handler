@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2034,SC2155,SC1004 shell=bash
+# shellcheck disable=SC2034,SC2155,SC1004
 
 ##### LICENSE #####
 # MIT License
@@ -100,13 +100,13 @@ runDBMigrations() {
     exit 2
   elif [[ $PGPASSWORD == "" ]]; then
     warn "PGPASSWORD is missing, proceed at your own risk!"
-    if ! psql -h $PGHOST -p $PGPORT -U $PGUSER -d $PGDATABASE < /vault/sql-src/manual/init-db.sql; then
+    if ! psql -h $PGHOST -p $PGPORT -U $PGUSER -d $PGDATABASE < /vault/migrations/manual/init-db.sql; then
       error "Database migrations has failed, aborting" && exit 2
     else
       success "Database migrations successfully ran"
     fi
   else
-    if ! PGPASSWORD=$PGPASSWORD psql -h $PGHOST -p $PGPORT -U $PGUSER -d $PGDATABASE < /vault/sql-src/manual/init-db.sql; then
+    if ! PGPASSWORD=$PGPASSWORD psql -h $PGHOST -p $PGPORT -U $PGUSER -d $PGDATABASE < /vault/migrations/manual/init-db.sql; then
       error "Database migrations has failed, aborting" && exit 2
     else
       success "Database migrations successfully ran"
@@ -124,11 +124,14 @@ prestartHandler() {
   if [[ $SKIP_HCL_FILE_GENERATION == "" ]]; then
     echoStageName "Generating configuration"
     envsubst < /vault/template.hcl > /vault/staging/main.hcl
+
+    # Don't make this 777, as that's cursed.
+    chmod 766 /vault/staging/main.hcl
+
     [ "$DEBUG" == "1" ] && cat /vault/staging/main.hcl && warn "The above output is your config, this might contain your DATABASE_URL!"
     sleep 5
   else
-    #warn "HCL file generation are being skipped"
-    true # Don't distrub the logs
+    warn "HCL file generation are being skipped, proceed at your own risk"
   fi
 }
 

@@ -1,4 +1,4 @@
-#!/usr/bin/dumb-init /bin/bash
+#!/bin/bash
 
 # This script file is copied from https://github.com/hashicorp/docker-vault/blob/master/0.X/docker-entrypoint.sh,
 # along with some customizations, like copying staging/main.hcl to config/main.hcl.
@@ -51,8 +51,7 @@ fi
 # We als check if SKIP_HCL_FILE_GENERATION is empty before proceeding.
 if [ -f "/vault/staging/main.hcl" ] && [[ $SKIP_HCL_FILE_GENERATION != "true" ]]; then
     echo "Copying /vault/staging/main.hcl"
-    mv /vault/staging/main.hcl /vault/config/main.hcl
-    if [ -f "/vault/config/main.hcl" ]; then
+    if cp /vault/staging/main.hcl /vault/config/main.hcl; then
       echo "Successfully copied staging/main.hcl to config/main.hcl" && sleep 5
     else
       echo "Copy process failed!" && exit 1
