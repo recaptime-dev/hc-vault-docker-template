@@ -47,13 +47,17 @@ services:
       - db
     cap_add:
       - IPC_LOCK
-    cap_drop:
-      - ALL
     restart: unless-stopped
+    environment:
+      # see https://github.com/hashicorp/docker-vault/issues/137
+      SKIP_CHOWN: "true"
+      DEBUG: 1
   gotty:
     image: ghcr.io/madeythepinshub/vault-gnupg-gotty:localdev
     build:
       context: terminal
+    volumes:
+      - ./data/gotty-home:/root
     ports:
       - "3030:3030"
     depends_on:
