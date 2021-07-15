@@ -34,12 +34,12 @@ main() {
     touch "/tmp/.gottylock"
 
     echoStageName Starting web terminal
-    gotty --port 3030 --title-format vault-operator-controlplane --permit-write --reconnect /bin/bash --login -i
+    exec gotty --port 3030 --title-format vault-operator-controlplane --permit-write --reconnect /bin/bash -l
   elif [[ -f "/tmp/.gottylock" ]] && [[ $1 == "start" ]]; then
     error "GoTTY lockfile found, not starting a new one."
     exit 1
   elif [[ $1 == "" ]]; then
-    bash --login -i
+    exec bash -l
   else
     exec "$@"
   fi

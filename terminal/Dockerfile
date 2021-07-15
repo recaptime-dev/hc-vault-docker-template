@@ -1,21 +1,9 @@
 # syntax=docker/dockerfile:1
 
 # Stage 1: Download GoTTY source code and build from source for reproducing builds
-FROM alpine:3.14 as gotty
+FROM golang:1.16 as gotty
 
-ARG GOTTY_VERSION=v1.0.1
-
-RUN mkdir -p /tmp/gotty/bin && set -eux; \
-    apkArch="$(apk --print-arch)"; \
-    case "$apkArch" in \
-        armhf) ARCH='arm' ;; \
-        x86_64) ARCH='amd64' ;; \
-        x86) ARCH='386' ;; \
-        *) echo >&2 "error: unsupported architecture: $apkArch"; exit 1 ;; \
-    esac && \
-    # when built on amd64 system: wget -qO- https://github.com/yudai/gotty/releases/download/v1.0.1/gotty_linux_amd64.tar.gz | tar -xzv -C /tmp/gotty/bin
-    wget -qO- https://github.com/yudai/gotty/releases/download/${GOTTY_VERSION}/gotty_linux_${ARCH}.tar.gz | tar -xzv -C /tmp/gotty/bin && \
-    mv /tmp/gotty/bin/gotty /usr/local/bin/gotty
+RUN go get -v github.com/MadeByThePinsHub/gotty
 
 FROM alpine:3.14 as hashicorp
 
@@ -68,7 +56,9 @@ RUN set -eux; \
 FROM alpine:3.14
 
 # Copy GoTTY from the gotty download process stage
-COPY --from=gotty /usr/local/bin/gotty /usr/local/bin/gotty
+COPY --from=gotty /go/bin/gotty /usr/local/bin/gotty
+# Also our wrapper with some magic
+COPY gotty-wrapper.sh /bin/gotty
 
 # Make sure it's executable
 RUN chmod a+x /usr/local/bin/gotty \
@@ -94,8 +84,8 @@ COPY image-bootstraper.sh /usr/bin/image-bootstraper
 # Our bashrc and shell aliases/functions
 COPY .bashrc .bash_aliases /root/
 
-# Ensure our image bootstraper script is executable
-RUN chmod +x /usr/bin/image-bootstraper
+# Ensure our wrappers are executable
+RUN chmod +x /usr/bin/image-bootstraper && chmod +x /bin/gotty
 
 # Listen at port 3030
 EXPOSE 3030
