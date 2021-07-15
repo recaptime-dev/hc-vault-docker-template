@@ -26,18 +26,19 @@
 FROM vault:1.7.3
 
 # Temporarily switch to root to install deps and chown to vault
-USER root
 WORKDIR /vault
 
 # Copy config and SQL stuff
-COPY config_template.hcl /vault/template.hcl
-COPY sql /vault/migrations
+COPY --chown=vault:vault config_template.hcl /vault/template.hcl
+COPY --chown=vault:vault sql /vault/migrations
 
 # just in case the base image doesn't have Bash, we also install Node.js and psql
 # for our database migrations to run
-RUN apk add bash coreutils gettext nodejs postgresql-client \
+RUN apk add bash coreutils gettext nodejs postgresql-client libcap \
     # Aded to possibly fix permission issues
-    && chmod 766 /vault/template.hcl
+    && chmod -R 777 /vault/config \
+    # Enable IPC_LOCK stuff, we cannot handle SETFCAP stuff here.
+    && /usr/sbin/setcap cap_ipc_lock=+ep /bin/vault
 
 # One last thing: copy scripts/wait-for-it from thedevs-network/kutt
 #COPY scripts/wait-for-it /bin/wait-for-it
@@ -50,22 +51,25 @@ RUN chmod +x /vault/bootstrap-handler \
     # Create an staging folder for our generated Vault config through
     # envsubst command. Our bootstrap script in this image will handle the
     # rest on it.
-    && mkdir /vault/staging \
+    && mkdir /vault/staging && chmod -Rv 777 /vault/staging
     # Then delete the main entrypoint script from our base image because we want to
     # custmize it.
-    && rm /usr/local/bin/docker-entrypoint.sh
+    #&& rm /usr/local/bin/docker-entrypoint.sh
 
-COPY scripts/main-entrypoint-custom.sh /usr/local/bin/docker-entrypoint.sh
+#COPY scripts/main-entrypoint-custom.sh /usr/local/bin/docker-entrypoint.sh
 
 # Ensure it's executable btw
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+#RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Expose in port 3000
 EXPOSE 3000
 
+# SETFCAP-related error is still an issue when running out chmod stuff as vault user.
+# Issue: https://github.com/hashicorp/docker-vault/issues/137
+USER vault
 # ..and hit the road! When our bootstrap script calls the customized /usr/local/bin/docker-entrypoint.sh,
 # we'll switch to the vault user through su-exec
-ENTRYPOINT ["/usr/bin/dumb-init"]
+ENTRYPOINT ["/vault/bootstrap-handler"]
 # by default, we'll start our Vault server through some environment variables magic
 # if $VAULT_SERVER_MODE is set to 'production', otherwise we'll start in dev mode instead.
-CMD ["/vault/bootstrap-handler", "server"]
+CMD ["server"]

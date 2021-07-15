@@ -1,5 +1,5 @@
-#!/bin/bash
-# shellcheck disable=SC2034,SC2155,SC1004
+#!/usr/bin/dumb-init /bin/bash
+# shellcheck disable=SC2034,SC2155,SC1004 shell=bash
 
 ##### LICENSE #####
 # MIT License
@@ -24,6 +24,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 ##### LICENSE #####
+
+# Prevent core dumps
+ulimit -c 0
 
 useColor() {
   RED=$(printf '\033[31m')
@@ -51,28 +54,56 @@ echoStageName() {
   echo "${BOLD}----> $* ${RESET}"
 }
 
+# Allow setting VAULT_REDIRECT_ADDR and VAULT_CLUSTER_ADDR using an interface
+# name instead of an IP address. The interface name is specified using
+# VAULT_REDIRECT_INTERFACE and VAULT_CLUSTER_INTERFACE environment variables. If
+# VAULT_*_ADDR is also set, the resulting URI will combine the protocol and port
+# number with the IP of the named interface.
+get_addr () {
+    local if_name=$1
+    local uri_template=$2
+    ip addr show dev "$if_name" | awk -v uri="$uri_template" '/\s*inet\s/ { \
+      ip=gensub(/(.+)\/.+/, "\\1", "g", $2); \
+      print gensub(/^(.+:\/\/).+(:.+)$/, "\\1" ip "\\2", "g", uri); \
+      exit}'
+}
+
+if [ -n "$VAULT_REDIRECT_INTERFACE" ]; then
+    export VAULT_REDIRECT_ADDR="$(get_addr "$VAULT_REDIRECT_INTERFACE" ${VAULT_REDIRECT_ADDR:-"http://0.0.0.0:8200"})"
+    echo "Using $VAULT_REDIRECT_INTERFACE for VAULT_REDIRECT_ADDR: $VAULT_REDIRECT_ADDR"
+fi
+if [ -n "$VAULT_CLUSTER_INTERFACE" ]; then
+    export VAULT_CLUSTER_ADDR=$(get_addr "$VAULT_CLUSTER_INTERFACE" ${VAULT_CLUSTER_ADDR:-"https://0.0.0.0:8201"})
+    echo "Using $VAULT_CLUSTER_INTERFACE for VAULT_CLUSTER_ADDR: $VAULT_CLUSTER_ADDR"
+fi
+
+# VAULT_CONFIG_DIR isn't exposed as a volume but you can compose additional
+# config files in there if you use this image as a base, or use
+# VAULT_LOCAL_CONFIG below.
+export VAULT_CONFIG_DIR=/vault/config
+
 extractEnvVars() {
   echoStageName "Extracting environment variables"
-  if [[ $API_ADDRESS == "" ]] && [[ $VAULT_SERVER_MODE == "development" ]]; then
+  if [[ "$API_ADDRESS" == "" ]] && [[ $VAULT_SERVER_MODE == "development" ]]; then
      export API_ADDRESS="http://localhost:3000"
   fi
 
-  if [[ $DATABASE_URL == "" ]]; then
+  if [[ "$DATABASE_URL" == "" ]]; then
      warn "DATABASE_URL is undefined, falling back to Compose-styled defaults"
      export DATABASE_URL="postgres://bullshithq:shitfuckery@db/hashcorpvault_db?sslmode=disable"
      export PGUSER=bullshithq PGPASSWORD=shitfuckery PGHOST=db PGPORT=5432 PGDATABASE=hashicorpvault_db
-  elif [[ $DATABASE_URL == "" ]] && [[ $PGHOST != "" && $PGPORT != "" ]]; then
+  elif [[ "$DATABASE_URL" == "" ]] && [[ $PGHOST != "" && $PGPORT != "" ]]; then
      export DATABASE_URL="postgres://$PGUSER:$PGPASSWORD@$PGHOST:$PGPORT/$PGDATABASE"
   fi
 
-  if [[ $DISABLE_MEMORY_LOCKING == "" ]]; then
+  if [[ "$DISABLE_MEMORY_LOCKING" == "" ]]; then
      warn "Memory locking is enabled, make sure you add the IPC_LOCK cap when running this image or atleast your PaaS provider supports it."
      warn "If Vault complains about this, stop and start with DISABLE_MEMORY_LOCKING variable set to true. If enabled, we'll also set SKIP_SETCAP to true."
      export DISABLE_MEMORY_LOCKING=false
-  elif [[ $DISABLE_MEMORY_LOCKING == "true" ]]; then
+  elif [[ "$DISABLE_MEMORY_LOCKING" == "true" ]]; then
      export SKIP_SETCAP=true
      warn "Memory locking is disabled, we set SKIP_SETCAP to true for you."
-  elif [[ $DISABLE_MEMORY_LOCKING == "false" ]]; then
+  elif [[ "$DISABLE_MEMORY_LOCKING" == "false" ]]; then
      warn "Memory locking is enabled, make sure you add the IPC_LOCK cap when running this image or atleast your PaaS provider supports it."
      warn "If Vault complains about this, stop and start with DISABLE_MEMORY_LOCKING variable set to true. If enabled, we'll also set SKIP_SETCAP to true."
      export DISABLE_MEMORY_LOCKING=false
@@ -83,8 +114,8 @@ extractEnvVars() {
 }
 
 runDBMigrations() {
-  echoStageName "Running database migrations in 15 seconds"
-  sleep 15
+  echoStageName "Running database migrations in 10 seconds"
+  sleep 10
   if [[ $SKIP_DB_MIGRATIONS_MANUAL == "true" ]]; then
     warn "Postgres database migrations are being skipped, proceed at your own risk"
   elif [ -n "$VAULT_LOCAL_CONFIG" ]; then
@@ -121,17 +152,52 @@ prestartHandler() {
   # Run database migrations
   runDBMigrations
 
+  ls -al /vault/config
+
   if [[ $SKIP_HCL_FILE_GENERATION == "" ]]; then
-    echoStageName "Generating configuration"
-    envsubst < /vault/template.hcl > /vault/staging/main.hcl
+     if [ "$VAULT_LOCAL_CONFIG" == "" ]; then
+      echoStageName "Generating configuration"
+      envsubst < /vault/template.hcl > /vault/config/main.hcl
 
-    # Don't make this 777, as that's cursed.
-    chmod 766 /vault/staging/main.hcl
+      # Don't make this 777, as that's cursed.
+      #chmod 766 /vault/staging/main.hcl
+    fi
 
-    [ "$DEBUG" == "1" ] && cat /vault/staging/main.hcl && warn "The above output is your config, this might contain your DATABASE_URL!"
-    sleep 5
+    # You can also set the VAULT_LOCAL_CONFIG environment variable to pass some
+    # Vault configuration JSON without having to bind any volumes.
+    if [ -n "$VAULT_LOCAL_CONFIG" ]; then
+      warn "HCL file generation are being skipped, using JSON config instead"
+      echo "$VAULT_LOCAL_CONFIG" > "$VAULT_CONFIG_DIR/local.json"
+    fi
+
+    if [[ "$DEBUG" == "1" ]] && [ -f "/vault/config/main.hcl" ]; then
+      cat /vault/config/main.hcl && warn "The above output is your config, this might contain your DATABASE_URL!"
+      sleep 5
+    elif [[ "$DEBUG" == "1" ]] && [ -f "/vault/config/local.json" ]; then
+      cat /vault/config/local.json && warn "The above output is your config, this might contain your DATABASE_URL!"
+      sleep 5
+    fi
   else
     warn "HCL file generation are being skipped, proceed at your own risk"
+  fi
+}
+
+bootstrap() {
+  if [ -z "$SKIP_CHOWN" ]; then
+    # If the config dir is bind mounted then chown it
+    if [ "$(stat -c %u /vault/config)" != "$(id -u vault)" ]; then
+        chown -R vault:vault /vault/config || echo "Could not chown /vault/config (may not have appropriate permissions)"
+    fi
+
+    # If the logs dir is bind mounted then chown it
+    if [ "$(stat -c %u /vault/logs)" != "$(id -u vault)" ]; then
+        chown -R vault:vault /vault/logs
+    fi
+
+    # If the file dir is bind mounted then chown it
+    if [ "$(stat -c %u /vault/file)" != "$(id -u vault)" ]; then
+        chown -R vault:vault /vault/file
+    fi
   fi
 }
 
@@ -139,13 +205,14 @@ prestartHandler() {
 if [[ $1 == "server" ]] && [[ $VAULT_SERVER_MODE == "production" ]]; then
   prestartHandler
 
-  echoStageName "Summoning the main entrypoint"
-  /usr/local/bin/docker-entrypoint.sh server
+  bootstrap
+
+  exec vault server -config="$VAULT_CONFIG_DIR" "$@"
 # If not set, fallback to dev mode
 elif [[ $1 == "server" ]]; then
    warn "Starting Vault server in dev mode"
 
-   if [[ $DISABLE_MEMORY_LOCKING == "true" ]]; then
+   if [[ $DISABLE_MEMORY_LOCKING == "1" ]] || [[ $DISABLE_MEMORY_LOCKING == "true" ]]; then
      warn "Memory locking is disabled, we set SKIP_SETCAP and VAULT_DISABLE_MLOCK to true for you."
      export SKIP_SETCAP=true VAULT_DISABLE_MLOCK=true
    else
@@ -153,7 +220,9 @@ elif [[ $1 == "server" ]]; then
      warn "If Vault complains about this, stop and start with DISABLE_MEMORY_LOCKING variable set to true. If enabled, we'll also set SKIP_SETCAP to true."
    fi
 
-   /usr/local/bin/docker-entrypoint.sh server -dev
+   vault server -dev \
+      -dev-root-token-id="$VAULT_DEV_ROOT_TOKEN_ID" \
+      -dev-listen-address="${VAULT_DEV_LISTEN_ADDRESS:-"0.0.0.0:8200"}"
 else
-  /usr/local/bin/docker-entrypoint.sh "$@"
+  exec "$@"
 fi
