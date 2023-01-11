@@ -9,7 +9,7 @@
   "author": "Andrei Jiroh <andreijiroh@madebythepins.tk>",
   "license": "MIT",
   "dependencies": {
-    "knex": "^0.95.6",
+    "knex": "^2.4.0",
     "pg": "^8.6.0"
   },
   "devDependencies": {
